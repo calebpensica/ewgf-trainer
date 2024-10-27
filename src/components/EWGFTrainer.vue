@@ -42,7 +42,6 @@ export default {
     const activeKeys = new Set();
     const sequence = [];
     let lastTime = null;
-    const allowedDelayFrames = 20;
     const frameDuration = 1000 / 60;
 
     const selectedCharacter = ref("heihachi");
@@ -62,12 +61,30 @@ export default {
     const ewgfSoundPath = ref(soundPaths[selectedCharacter.value].ewgf);
     const wgfSoundPath = ref(soundPaths[selectedCharacter.value].wgf);
 
+    function convertKeys(activeKeys) {
+    // Define the mapping object
+    const conversionMap = {
+        's': 'd',
+        'd': 'f',
+        'i': '2'
+    };
+
+    // Convert the input set
+    const convertedKeys = new Set();
+    activeKeys.forEach(key => {
+        // Use the mapping to convert keys, defaulting to the original key if not found
+        convertedKeys.add(conversionMap[key] || key);
+    });
+
+    return convertedKeys;
+  }
+
     const logKeys = async () => {
       const currentTime = new Date().getTime();
       const frameSinceLast = lastTime ? Math.round(((currentTime - lastTime) / frameDuration)) : 0;
       lastTime = currentTime;
 
-      const pressedKeys = Array.from(activeKeys).sort().join(" + ");
+      const pressedKeys = Array.from(convertKeys(activeKeys)).sort().join(" + ");
       const message = pressedKeys || "Neutral";
 
       keyLogs.value.push({ message, frameSinceLast, time: currentTime });
@@ -85,14 +102,12 @@ export default {
     const checkForSpecialMoves = () => {
       if (sequence.length >= 5) {
         const [first, second, third, fourth, fifth] = sequence;
-        if (first.keys === "d" && second.keys === "Neutral" && third.keys === "s") {
-          const isEWGF = (fifth.frameSinceLast === 0) &&
-            ((fourth.keys === "d + s" || fourth.keys === "d + s + i") &&
-             fourth.frameSinceLast <= allowedDelayFrames);
+        if (first.keys === "f" && second.keys === "Neutral") {
+          const isEWGF = ((third.keys === "d" && fourth.keys === "d + f" && fifth.keys ==="2 + d + f") &&
+          (fifth.frameSinceLast === 0))
 
-          const isWGF = (fifth.frameSinceLast >= 1 && fifth.frameSinceLast <= 10) &&
-            ((fourth.keys === "d + s" || fourth.keys === "d + s + i") &&
-             fourth.frameSinceLast <= allowedDelayFrames);
+          const isWGF = ((third.keys === "d" && fourth.keys === "d + f" && fifth.keys ==="2 + d + f") &&
+          (fifth.frameSinceLast >= 1 && fifth.frameSinceLast <= 10))
 
           if (isEWGF) {
             playSound(ewgfSoundPath.value); // Play EWGF sound for selected character
@@ -102,6 +117,8 @@ export default {
             playSound(wgfSoundPath.value); // Play WGF sound for selected character
             keyLogs.value.push({ message: "WGF detected!", frameSinceLast: 0, time: new Date().getTime() });
             sequence.length = 0;
+          } else {
+              //debug logging
           }
         }
       }

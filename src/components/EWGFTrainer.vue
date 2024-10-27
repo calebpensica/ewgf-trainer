@@ -2,7 +2,6 @@
   <div>
     <h1>EWGF Trainer</h1>
     <p>Press "d" for forward input, "s" for down input, "i" for 2 input.</p>
-
     <!-- Character Selection Dropdown -->
     <label for="characterSelect">Select Character:</label>
     <select id="characterSelect" v-model="selectedCharacter" @change="loadCharacterSounds">
@@ -15,7 +14,7 @@
 
     <!-- Indicator Row -->
     <div class="indicator-row">
-      <span :class="{ active: activeKeys.has('d')  && !activeKeys.has('s') && !activeKeys.has('i') }">f</span>
+      <span :class="{ active: activeKeys.has('d') && !activeKeys.has('s') && !activeKeys.has('i') }">f</span>
       <span :class="{ active: activeKeys.size === 0 }">☆</span>
       <span :class="{ active: activeKeys.has('s') }">d</span>
       <span :class="{ active: shouldBoldSecondF() }">f</span>
@@ -30,6 +29,7 @@
         </li>
       </ul>
     </div>
+    <div :class="{'background-fade background-fade-active': isEWGF, 'background-fade background-fade-inactive': !isEWGF}"></div>
   </div>
 </template>
 
@@ -60,24 +60,23 @@ export default {
 
     const ewgfSoundPath = ref(soundPaths[selectedCharacter.value].ewgf);
     const wgfSoundPath = ref(soundPaths[selectedCharacter.value].wgf);
+    
+    const isEWGF = ref(false); // Reactive variable for EWGF state
 
     function convertKeys(activeKeys) {
-    // Define the mapping object
-    const conversionMap = {
+      const conversionMap = {
         's': 'd',
         'd': 'f',
         'i': '2'
-    };
+      };
 
-    // Convert the input set
-    const convertedKeys = new Set();
-    activeKeys.forEach(key => {
-        // Use the mapping to convert keys, defaulting to the original key if not found
+      const convertedKeys = new Set();
+      activeKeys.forEach(key => {
         convertedKeys.add(conversionMap[key] || key);
-    });
+      });
 
-    return convertedKeys;
-  }
+      return convertedKeys;
+    }
 
     const logKeys = async () => {
       const currentTime = new Date().getTime();
@@ -103,29 +102,37 @@ export default {
       if (sequence.length >= 5) {
         const [first, second, third, fourth, fifth] = sequence;
         if (first.keys === "f" && second.keys === "Neutral") {
-          const isEWGF = ((third.keys === "d" && fourth.keys === "d + f" && fifth.keys ==="2 + d + f") &&
-          (fifth.frameSinceLast === 0))
+          const currentIsEWGF = (
+            (third.keys === "d" && fourth.keys === "d + f" && fifth.keys === "2 + d + f") &&
+            (fifth.frameSinceLast === 0)
+          );
 
-          const isWGF = ((third.keys === "d" && fourth.keys === "d + f" && fifth.keys ==="2 + d + f") &&
-          (fifth.frameSinceLast >= 1 && fifth.frameSinceLast <= 10))
+          const currentIsWGF = (
+            (third.keys === "d" && fourth.keys === "d + f" && fifth.keys === "2 + d + f") &&
+            (fifth.frameSinceLast >= 1 && fifth.frameSinceLast <= 10)
+          );
 
-          if (isEWGF) {
-            playSound(ewgfSoundPath.value); // Play EWGF sound for selected character
+          if (currentIsEWGF) {
+            isEWGF.value = true; // Set EWGF state to true
+            playSound(ewgfSoundPath.value);
             keyLogs.value.push({ message: "EWGF detected!", frameSinceLast: 0, time: new Date().getTime() });
             sequence.length = 0;
-          } else if (isWGF) {
-            playSound(wgfSoundPath.value); // Play WGF sound for selected character
+
+            // Fade out background after a short delay
+            setTimeout(() => {
+              isEWGF.value = false;
+            }, 1000); // Adjust the duration as needed
+          } else if (currentIsWGF) {
+            playSound(wgfSoundPath.value);
             keyLogs.value.push({ message: "WGF detected!", frameSinceLast: 0, time: new Date().getTime() });
             sequence.length = 0;
-          } else {
-              //debug logging
           }
         }
       }
     };
 
     const playSound = (soundPath) => {
-      const soundInstance = new Audio(soundPath); // Create new instance to play sound concurrently
+      const soundInstance = new Audio(soundPath);
       soundInstance.play();
     };
 
@@ -168,6 +175,7 @@ export default {
       selectedCharacter,
       loadCharacterSounds,
       shouldBoldSecondF,
+      isEWGF,
     };
   },
 };
@@ -214,5 +222,24 @@ ul {
 li {
   font-size: 14px;
   margin: 4px 0;
+}
+
+/* Styles for the background */
+.background-fade {
+  height:100px;
+  background-image: url('@/assets/images/sugarcoat.jpg'); /* Use your image path */
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 1; /* Default opacity */
+  transition: opacity 1s ease-in-out; /* Transition for fade effect */
+}
+
+.background-fade-active {
+  opacity: 1; /* Fade in */
+}
+
+.background-fade-inactive {
+  opacity: 0; /* Fade out */
 }
 </style>
